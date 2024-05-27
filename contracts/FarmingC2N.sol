@@ -56,7 +56,7 @@ contract FarmingC2N is Ownable {
         IERC20 _erc20,
         uint256 _rewardPerSecond,
         uint256 _startTimestamp
-    )  Ownable(msg.sender) {
+    ) Ownable(msg.sender) {
         erc20 = _erc20;
         rewardPerSecond = _rewardPerSecond;
         startTimestamp = _startTimestamp;
@@ -122,21 +122,19 @@ contract FarmingC2N is Ownable {
     }
 
     // View function to see deposited LP for a user.
-    function deposited(uint256 _pid, address _user)
-        external
-        view
-        returns (uint256)
-    {
+    function deposited(
+        uint256 _pid,
+        address _user
+    ) external view returns (uint256) {
         UserInfo storage user = userInfo[_pid][_user];
         return user.amount;
     }
 
     // View function to see pending ERC20s for a user.
-    function pending(uint256 _pid, address _user)
-        external
-        view
-        returns (uint256)
-    {
+    function pending(
+        uint256 _pid,
+        address _user
+    ) external view returns (uint256) {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][_user];
         uint256 accERC20PerShare = pool.accERC20PerShare;
@@ -152,10 +150,15 @@ contract FarmingC2N is Ownable {
                 ? pool.lastRewardTimestamp
                 : endTimestamp;
             (, uint256 nrOfSeconds) = lastTimestamp.trySub(timestampToCompare);
-            (, uint256 erc20Reward) = nrOfSeconds.tryMul(rewardPerSecond);
-            erc20Reward = erc20Reward.mulDiv(pool.allocPoint, totalAllocPoint);
+            uint newAccERC20PerShare = getNewAccERC20PerShare(
+                nrOfSeconds,
+                pool.allocPoint,
+                lpSupply
+            );
+            // (, uint256 erc20Reward) = nrOfSeconds.tryMul(rewardPerSecond);
+            // erc20Reward = erc20Reward.mulDiv(pool.allocPoint, totalAllocPoint);
 
-            (, uint256 newAccERC20PerShare) = erc20Reward.tryDiv(lpSupply);
+            // (, uint256 newAccERC20PerShare) = erc20Reward.tryDiv(lpSupply);
 
             (, accERC20PerShare) = accERC20PerShare.tryAdd(newAccERC20PerShare);
         }
@@ -213,16 +216,34 @@ contract FarmingC2N is Ownable {
             pool.lastRewardTimestamp
         );
 
-        (, uint256 erc20Reward) = nrOfSeconds.tryMul(rewardPerSecond);
+        uint newAccERC20PerShare = getNewAccERC20PerShare(
+            nrOfSeconds,
+            pool.allocPoint,
+            lpSupply
+        );
 
-        erc20Reward = erc20Reward.mulDiv(pool.allocPoint, totalAllocPoint);
+        // (, uint256 erc20Reward) = nrOfSeconds.tryMul(rewardPerSecond);
 
-        (, uint256 newAccERC20PerShare) = erc20Reward.tryDiv(lpSupply);
+        // erc20Reward = erc20Reward.mulDiv(pool.allocPoint, totalAllocPoint);
+
+        // (, uint256 newAccERC20PerShare) = erc20Reward.tryDiv(lpSupply);
 
         (, pool.accERC20PerShare) = pool.accERC20PerShare.tryAdd(
             newAccERC20PerShare
         );
         pool.lastRewardTimestamp = block.timestamp;
+    }
+
+    function getNewAccERC20PerShare(
+        uint nrOfSeconds,
+        uint curPoolAllocPoint,
+        uint lpSupply
+    ) internal view returns (uint256 newAccERC20PerShare) {
+        (, uint256 erc20Reward) = nrOfSeconds.tryMul(rewardPerSecond);
+
+        erc20Reward = erc20Reward.mulDiv(curPoolAllocPoint, totalAllocPoint);
+
+        (, newAccERC20PerShare) = erc20Reward.tryDiv(lpSupply);
     }
 
     // Deposit LP tokens to Farm for ERC20 allocation.
@@ -233,9 +254,7 @@ contract FarmingC2N is Ownable {
         updatePool(_pid);
 
         if (user.amount > 0) {
-            (, uint256 userReward) = user.amount.tryMul(
-                pool.accERC20PerShare
-            );
+            (, uint256 userReward) = user.amount.tryMul(pool.accERC20PerShare);
             (, uint256 pendingAmount) = userReward.trySub(user.rewardDebt);
 
             erc20Transfer(msg.sender, pendingAmount);
