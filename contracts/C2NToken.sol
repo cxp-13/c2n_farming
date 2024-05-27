@@ -3,9 +3,9 @@ pragma solidity ^0.8.20;
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract MyToken is ERC20 {
+contract C2NToken is ERC20 {
     constructor()
-        ERC20("MyTokenLP", "MTK")
+        ERC20("C2N", "C2N")
 
     {}
 
